@@ -1,0 +1,526 @@
+<html>
+  <head>
+    <title>LDA Topic Modelling in JS</title>
+    <meta charset="utf-8" />
+    <link
+      type="text/css"
+      href="css/ui-lightness/jquery-ui-1.8.21.custom.css"
+      rel="stylesheet"
+    />
+    <link type="text/css" href="css/lda.css" rel="stylesheet" />
+    <script type="text/javascript" src="js/jquery-1.7.2.min.js"></script>
+    <script
+      type="text/javascript"
+      src="js/jquery-ui-1.8.21.custom.min.js"
+    ></script>
+    <script src="js/jquery.tagcanvas.min.js" type="text/javascript"></script>
+    <script type="text/javascript" src="js/stopwords.js"></script>
+    <script type="text/javascript" src="js/lda.js"></script>
+    <!-- <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script> -->
+    <script>
+      function topicise() {
+        var t = document.getElementById("topiccloud");
+        var o = document.getElementById("output");
+        var x = document.getElementById("Myid");
+        x.style.display = "none";
+        o.style.display = "block";
+        t.style.display = "block";
+        var documents = new Array();
+        var f = {};
+        var vocab = new Array();
+        var docCount = 0;
+        for (var i = 0; i < sentences.length; i++) {
+          if (sentences[i] == "") continue;
+          var words = sentences[i].split(/[\s,\"]+/);
+          if (!words) continue;
+          var wordIndices = new Array();
+          for (var wc = 0; wc < words.length; wc++) {
+            var w = words[wc].toLowerCase().replace(/[^a-z\'A-Z0-9 ]+/g, "");
+            if (
+              w == "" ||
+              w.length == 1 ||
+              stopwords[w] ||
+              w.indexOf("http") == 0
+            )
+              continue;
+            if (f[w]) {
+              f[w] = f[w] + 1;
+            } else if (w) {
+              f[w] = 1;
+              vocab.push(w);
+            }
+            wordIndices.push(vocab.indexOf(w));
+          }
+          if (wordIndices && wordIndices.length > 0) {
+            documents[docCount++] = wordIndices;
+          }
+        }
+        var V = vocab.length; // vocabulary array length
+        var M = documents.length; // corpus array length
+        var K = parseInt($("#topics").val()); // No of topics
+        var alpha = 0.1; // per-document distributions over topics
+        var beta = 0.01; // per-topic distributions over words
+
+        // Initialising and Running the Model
+        lda.configure(documents, V, 10000, 2000, 100, 10);
+        lda.gibbs(K, alpha, beta);
+        var theta = lda.getTheta();
+        var phi = lda.getPhi();
+        var text = "";
+
+        //topics
+        var topTerms = 20;
+        var topicText = new Array();
+        for (var k = 0; k < phi.length; k++) {
+          text +=
+            '<canvas id="topic' + k + '" class="topicbox color' + k + '"><ul>';
+          var tuples = new Array();
+          for (var w = 0; w < phi[k].length; w++) {
+            tuples.push("" + phi[k][w].toPrecision(2) + "_" + vocab[w]);
+          }
+          tuples.sort().reverse();
+          if (topTerms > vocab.length) topTerms = vocab.length;
+          topicText[k] = "";
+          for (var t = 0; t < topTerms; t++) {
+            var topicTerm = tuples[t].split("_")[1];
+            var prob = parseInt(tuples[t].split("_")[0] * 100);
+            if (prob < 0.0001) continue;
+            text +=
+              '<li><a href="javascript:void(0);" data-weight="' +
+              prob +
+              '" title="' +
+              prob +
+              '%">' +
+              topicTerm +
+              "</a></li>";
+            console.log("topic " + k + ": " + topicTerm + " = " + prob + "%");
+            topicText[k] += topicTerm + " ";
+          }
+          text += "</ul></canvas>";
+        }
+        $("#topiccloud").html(text);
+        text = '<div class="spacer"> </div>';
+        for (var m = 0; m < theta.length; m++) {
+          text += '<div class="lines">';
+          text +=
+            '<div style="display:table-cell;width:100px;padding-right:5px">';
+          for (var k = 0; k < theta[m].length; k++) {
+            text +=
+              '<div class="box bgcolor' +
+              k +
+              '" style="width:' +
+              parseInt("" + theta[m][k] * 100) +
+              'px" title="' +
+              topicText[k] +
+              '"></div>';
+          }
+          text += "</div>" + sentences[m] + "</div>";
+        }
+        $("#output").html(text);
+        for (var k = 0; k < phi.length; k++) {
+          if (
+            !$("#topic" + k).tagcanvas({
+              textColour: $("#topic" + k).css("color"),
+              maxSpeed: 0.03,
+              initial: [
+                ((Math.random() > 0.5 ? 1 : -1) * Math.random()) / 2,
+                ((Math.random() > 0.5 ? 1 : -1) * Math.random()) / 2,
+              ],
+              decel: 0.98,
+              reverse: true,
+              weightSize: 5,
+              weightMode: "size",
+              weightFrom: "data-weight",
+              weight: true,
+            })
+          ) {
+            $("#topic" + k).hide();
+          } else {
+          }
+        }
+      }
+
+      $(document).ready(function () {
+        var select = $("#topics");
+        var slider = $("<div id='slider'></div>")
+          .insertAfter(select)
+          .slider({
+            min: 2,
+            max: 10,
+            range: "min",
+            value: select[0].selectedIndex + 2,
+            slide: function (event, ui) {
+              select[0].selectedIndex = ui.value - 2;
+            },
+          });
+        $("#topics").change(function () {
+          slider.slider("value", this.selectedIndex + 2);
+        });
+      });
+
+      // Word Cloud Button Clicked
+      function btnTopiciseClicked() {
+        var x = document.getElementById("Myid");
+        var y = document.getElementById("topiccloud");
+        var z = document.getElementById("output");
+        $("#btnTopicise").attr("disabled", "disabled");
+        sentences = $("#text").val().split("\n");
+        x.style.display = "none";
+        topicise();
+        $("#btnTopicise").removeAttr("disabled");
+        y.style.display = "block";
+        z.style.display = "none";
+      }
+      // Heat Map Button Clicked
+      function btnHeatMapClicked() {
+        var x = document.getElementById("Myid");
+        var y = document.getElementById("topiccloud");
+        var z = document.getElementById("output");
+        var t = document.getElementById("text");
+        sentences = $("#text").val().split("\n");
+        x.style.display = "none";
+        z.style.display = "block";
+        topicise();
+        y.style.display = "none";
+        t.style.height = "30%";
+      }
+      // Back Button Clicked
+      function btnBackClicked() {
+        window.location.href = "http://127.0.0.1:5503/index.html";
+      }
+      //Reset Buttton Clicked
+      function btnResetClicked() {
+        window.location.reload();
+      }
+      var sentences;
+    </script>
+    <!-- <script> -->
+    <!-- (function (i, s, o, g, r, a, m) {
+        i["GoogleAnalyticsObject"] = r;
+        (i[r] =
+          i[r] ||
+          function () {
+            (i[r].q = i[r].q || []).push(arguments);
+          }),
+          (i[r].l = 1 * new Date());
+        (a = s.createElement(o)), (m = s.getElementsByTagName(o)[0]);
+        a.async = 1;
+        a.src = g;
+        m.parentNode.insertBefore(a, m);
+      })(
+        window,
+        document,
+        "script",
+        "//www.google-analytics.com/analytics.js",
+        "ga"
+      );
+
+      ga("create", "UA-50176069-1", "awaisathar.github.io");
+      ga("send", "pageview"); -->
+    <!-- </script> -->
+    <script>
+      const targetDiv = document.getElementById("#metaDataDiv");
+    </script>
+
+    <style>
+      body {
+        font-family: "Lato", sans-serif;
+      }
+
+      .sidenav {
+        height: 100%;
+        width: 160px;
+        position: fixed;
+        z-index: 1;
+        top: 0;
+        left: 0;
+        overflow-x: hidden;
+        padding-top: 20px;
+        top: 180px;
+      }
+
+      .sidenav input {
+        padding: 6px 8px 6px 16px;
+        text-decoration: none;
+        font-size: 15px;
+        display: block;
+      }
+
+      .sidenav #myFile {
+        padding: 6px 8px 6px 16px;
+        text-decoration: none;
+        font-size: 17px;
+        display: block;
+        margin-left: 40px;
+        color: white;
+      }
+
+      .sidenav input:hover {
+        color: black;
+        cursor: pointer;
+      }
+
+      .sidenav label {
+        color: black;
+        margin-left: 15px;
+        font-size: 20px;
+      }
+
+      .sidenav img {
+        width: 150px;
+        height: 200px;
+        object-fit: contain;
+        margin-left: 10%;
+      }
+
+      .main {
+        margin-left: 160px;
+        font-size: 18px; 
+        padding: 0px 10px;
+      }
+
+      @media screen and (max-height: 450px) {
+        .sidenav {
+          padding-top: 15px;
+        }
+        .sidenav a {
+          font-size: 18px;
+        }
+        .sidenav label {
+          font-size: 18px;
+        }
+      }
+    </style>
+    
+  </head>
+  <body>
+    <div class="main">
+      <div
+        id="navbar"
+        style="
+          display: flex;
+          width: 100%;
+          max-width: 1300px;
+          margin-left: -170px;
+        "
+      >
+        <div>
+          <img src="UniversityLogo2.png" style="width: 300px" />
+        </div>
+        <div id="titletxt" style="margin-left: 100px">
+          Welcome To<br /><span style="color: #d6ad60">Topic Modelling</span>
+          and
+          <span style="color: #d6ad60">Visualisation Tool</span>
+        </div>
+      </div>
+      <div class="sidenav">
+        <input id="myFile" type="file" />
+        <input
+          id="btnMetadata"
+          type="button"
+          onclick="btnMetadataClicked();"
+          value="Metadata"
+        />
+        <input
+          id="btnTopicise"
+          type="button"
+          onclick="btnTopiciseClicked();"
+          value="Word Cloud"
+        />
+        <input
+          id="btnHeatMap"
+          type="button"
+          onclick="btnHeatMapClicked();"
+          value="Heat Map"
+        />
+        <input
+          id="btnReset"
+          type="button"
+          onclick="btnResetClicked();"
+          value="Reset"
+        />
+        <input
+          id="btnBack"
+          type="button"
+          onclick="btnBackClicked();"
+          value="Go Back"
+        />
+      </div>
+      <br />
+      <br />
+      <script>
+        function updateTextBox(sel) {
+          locations = [
+            "You can select a product and see its reviews with already loaded data. ",
+            "I thought it would be as big as small paper but turn out to be just like my palm. I think it is too small to read on it... not very comfortable as regular Kindle.\nThis kindle is light and easy to use especially at the beach!!!\nDidnt know how much i'd use a kindle so went for the lower end. im happy with it, even if its a little dark \ I am 100 happy with my purchase. I caught it on sale at a really good price. I am normally a real book person, but I have a 1 year old who loves ripping up pages. The Kindle prevents that, it's extremely portable (it fits better in my purse than a giant book), and I have it loaded with lots of books. I finish one and start another, without having to go store. It serves all my needs. I picked this one over the Paperwhite because the price was unbeatable and the only difference that I could see was this one wasn't backlit. A simple book light from the Dollar tree solves that issue. This is my second Kindle (the first being the old Keyboard model, which I put down because I fell out of love with the keyboard. Lol) and it most likely won't be my last.\nSolid entry level Kindle. Great for kids. Gifted for a kid of my friend and they love to use it to read more than their iPads. battery is good but higher model is a bit better.\nThis make an excellent ebook reader. Don't expect much from this device except to read basic ebooks. The good thing is it's cheap and good to read in the sun.\nI ordered this for my daughter, as I have the black paperwhite, and I love it. I read quite a bit and the larger books were driving me crazy having to hold them up while laying down, or wanting to take a book on vacation and lugging around a thick paperback, with this I can throw it in my bag and read anywhere. Its light weight, easy to use, the battery life lasts for weeks, which makes it an all around awesome device. My daughter is in public school and they offer an online library for E-Readers, so she can now download books for free from school! You can also download your own public library app (if your county offers that) and read free from there as well. You can shop for e-books straight from the device through Amazon.com.\nI bought my Kindle about 2 months ago and the battery is already dead and will not charge\namazon kindle is always the best ebook, upgrade every new model\nIt's beyond my expectation, and it can even show music score. Not fast turning though.\nIf you really want to have a good read on something digital this is the item you're looking for. It really is lightweight and highly functional. The battery lasts a long time and the screen is easy on the eyes. The only difficulty sometimes is reading in extremely bright environments. Overall an excellent buy.\nLove my kindle, makes reading at night so easy and it feels like you are reading a real book.\nGood product for child. Who only need to read the books\nThis Kindle is a convenient size yet lettering is easy to read.\nI use this every day on my commute. Great battery life, no backlight but very readable with normal lighting. I like the built in dictionary. Email yourself pdf or mobi files for easy transfers.\nIt does its job but I would buy one which the screen is brighter. There are times that it's difficult to read because screen is not too bright\nGreat product for myself! And I bought it when there was great deal on it!\nItem work well and was easy to read from in day light\nGreat product and service will refer to a friend. And the sales man r good\nEverything is great except that i can't read external pdfs properly. Either it zooms too much of too little. For kindle books it provides great experience. Battery life is awesome!\nI was looking for a kindle whitepaper. I saw online for $80. What a deal. I ordered it on line and picked it up in the store. I got it home and couldn't adjust the brightness. After a lengthy time with online customer service I called customer service. After 20 minuets with speaking to a female Elmer Fud that doesn't speak english well I figured I would just return it. Although it looks Identical to the $120 model, you can not adjust the brightness. That would have been good information before I bought it.\nThis is a nice bare-bones reading device. Easy to set up and use. My greatest issue is that it isn't back lit so it can't be used w/o a light on in the room. Returning it an purchasing a paperwhite instead.\nEasy to use and navigate, purchasing books is fast and simple and I love the fact that I can password protect this device\nThe Amazon Kindle is light weight and easy to use.\nI love hear readers, I had to replace mine because I destroyed the last, but it is awesome\nLove the simplicity. Also love that I use it for reading only and can't download distracting apps.\nMy husband loves this Kindle. He has a muscular disease keeping him from being able to handle anything with much weight at all. This is perfect.\nI've wanted a kindle for a while and decided to get it when BB put it on sale. I am not disappointed.\nI have several Kindles so knew what to expect. It is a great reading device and I keep several in different locations.",
+            "Great Gift for anyone. Very easy to setup. Coexist with all IOT Devices. Alexa is AWESOME!\nSuper excited to give this as a gift. It's super convenient that Best Buy has Echo products in store instead of having to purchase from Amazon.\nWe bought this for mother in law, buying another for me.\nWell designed, good sound, has everything Alexa has plus the HD video. Always ready with answers with associated video or text if applicable. Can show movie trailers, can also watch Amazon video. Excellent on-demand security video with Amazon compatible cameras. Voice activated message and/or video calls to Amazon Show owners or Alexa App holders. Highly recommended.\nI have one Alexa and three Echo dots and having Echo Show now is awesome!\nOmg I love my amazon show it is sooo cool and does a lot of cool stuff\nGreat looking design. Amazon Echo Show was easy to set up and use.\nThe product is very entertaining and useful. Would recommend it to anyone.\nGot it for few weeks but it kind of fades away from your life.\nThis device is awesome ‚Äò really lets you get very excited about smart home technology ‚Äò I‚Äôm buying a second one for my upstairs\nI purchased this for my daughter and when I tell you she was so happy she hugged the box then me and back to the box!\nOverall product is excellent. Speakers should have a capability to be used as Bluetooth speakers like the echo.\nI have the spot, dot and two shows, I started out with the spot and loved it so much I wanted a bigger one. This was a (Best Buy) ! No pun intended lol\nI was a little hesitant to spend the money to get this but I am so glad I did! Alexa always answers when I say the commands and I have noticed it is probably 95% right with any command that I have given. Love the fact that I can see things on the screen. Some of my news briefings have a picture/video so that's nice too. We also love the video call option. Planning on getting one for my grandma who is not as technologically advanced, and could just sit at a table and talk with the grandkids. Worth every penny.\nGreat product, very much recommended. Service at Best buy is always the best\nI bought 2 of these for gifts. I love my Echo and think the new one will be incredible too! After the holidays, I will buy one for myself!\nI can watch videos, check my security cameras, and grey two for a fantastic price\ninformation on weather, updates on music, events. Fun questions answered while working in kitchen. Good sound for a limited areaGreat sales assistance at Best Buy\nbought for christmas present for son and family so we can communicate visually.\nThe Amazon echo is excellent. Easy to set up, and we now use it to automate the entire house from our air-conditioning thermostat to every light in the house with the Phillips hue bulbs. We went and got one for everyone in our family.\nI have both an Amazon Echo and Amazon Show and prefer the Show with the video screen. I use the Show to display recipes when cooking, lyrics to the music I‚Äôm listening to and video conferencing with my family. I like seeing headlines of stories scroll across the screen along with the t8me and temperature.\nI have only been using my Amazon Echo Show for a couple days now but it works great. The microphone picks up my voice very easily, the sound quality is great, and it looks nice sitting on my coffee table!\nthis echo show lets you see so much, great item for your home!\nThe Echo is very easy to use and has features that allow users to converse easily with others who may have a hard time learning how to communicate using newer videophone technology. This product removes those barriers.\nI love my echo show I wish you could watch movies or tc shows or you tube so hopefully they will add that soon.\nLove all my Echo products and this one is exceptional as well. Was able to look in my house while away. Waiting for more update for access to apps in the future.\nLittle putsy so far, but there are continuous updates that I think will make this a great device to stay connected with family. Bought a second for my dad. Who knows, he might replace his land line someday if this gets better. I do think our original Echo is a bit better at responding, but I enjoy this one in the kitchen /aka hub of the house.\nIt's at its heart an echo, but having a screen on it, with 1000s of things to do with it make it a much easier recommendation over the simarly priced screenless echo plus\nAmazon - Echo Show is the best of all my Amazon products. I love the hands-free but able to see things on the screen.\nI have 2 of these in my house work great I just bought 4 for Christmas gifts for my family\nWe love Alexa! Love being able to watch news briefings, seeing the lyrics to songs, and so much more! It's in our kitchen and we use it everyday!\nThe unit does a good job of playing music from Amazon music. It hears your voice very good although it gets confused at times when I tell it to turn on a particular lamp and I have to slowly pronunciate it. Like that the music shows the lyrics. Do need a family account on Amazon music to plan different music on different units in different rooms at the same time though.\nI was jealous when our son showed us his Amazon Show and some of the things it was capable of doing. Since AOL eliminated Instant Messaging, my wife and I were less able to communicate because our offices are on separate floors. So we got two Shows and two Spots and now not only can intercom easily but use Alexa for music and many other things. We will probably start using some smart home devices which Alexa can also control. It's a fun device which seems to be getting better all the time.\nWe use this as a monitor for the amazon cloud camera! Works great we tell it to show us the camera ,and boom, there‚Äôs the video feed. Super easy to link our echo plus and the echo dot with the show!!\nWe use echo almost every day. It is fun to ask questions. The music is great. We check the weather and listen to news\nLove playing music and talking to Alexa and looking at my camera three the screen\nI love the Echo Show and this is the 3rd one I have purchased (two were presents for family at Christmas). This one was for me. I love being able to hear music, connect with family via video and ask Alexa questions. Best purchase I could have made!\nAwesome sound which was unexpected. It's nice seeing info on the screen such as recipes, song lyrics, weather, etc.",
+            "Works great. Turns H&A up and down. Tv on and off. Lights on and off. All from Alexa. You do have to have apps and special lights.\nI LOVE Alexa and my Echo device (and Smart Bulb) so much I bought 4 more Echos and 8 more bulbs with more to come soon...\nSo I went to the store, purchased and gifted.it was a snap.\nLove the convenience of being able to turn on a light or other appliances connected to smart switches with voice commands. Also very convenient music streaming, news and weather reports.\nWe replaced our old echo for this one with a smart hub, works great\nIt is a nice hub to use with lights and plugs. Sometimes echo does not work.\nSpeaker was used as a giveaway and everyone wanted it! It was a huge hit at our conference. Would buy again.\nI bought this for my moms birthday and she loves it.\nI like this smart machine and will recommend to my friends\npurchased this product while was on sale, very easy to pair, looks well made, very happy with it.\nLove it. It‚Äôs a lot of fun. Great speakers too provides a lot of great information and fun too!\nReally enjoying this device so far,,,my smart phone is basic Tracfone...currently adding smart lighting...will probably switch to a tablet for controlling and adding to a future (limited) smart home\nGreat item, we love our Echo. If only she could mow the yard for the kids....\nAlexa walks you through every step which I found helpful.\nWe have sonos speakers and a Honeywell Lyric thermostat. It took a little searching on google to get things linked. Now that they are linked we can play music in any room and change our home temperature by using Alexa.\nI'm not a techie, but after days of trying to hook up, I gave up. I don't know if it was the Echo Plus or my carrier ATT Uverse causing the issue, but it would NOT connect. So, back to the store it went. Even with checking out blogs on the internet for assistance...none of it worked.\nAlexa Is amazin. I love the features their great.Just love it\nThis speaker is truly amazing and being able to control my lights makes it even better\nMy new Echo Plus has been a fun find. It is working as advertised, and we are still exploring the many, many ways you can use this device. You do need some tech savvy on apps, wifi, and willingness to do some reading on the various skills but it is well worth it. Already added an Echo Dot to the mix.\nLove the knowledge it gives, and easy for my older brother who does. It so technology.\nI enjoy the amazon Alexa. It is an lot of fun. It will be more helpful once I have completely set up.\nWanted one for awhile so finally got one. Works great. Way better than Siri on my iPhone. Speaker works great for music. Very happy overal\nI will definitely recommend this product . The tech support is also easy and friendly. Alexa keeps my husband company during the day answering his questions.\nI originally purchased this to use as a Bluetooth speaker for my wife's music but soon realized that we would use this much more than we thought. Ya, turning on and off lights is good and being able to dim with the included bulb is pretty great but there are hundreds of smart home type of apps that work with this including my Sony Google TV and more show up regularly. Makes it almost too easy to be lazy.\nI am extremely satisfied with my purchase.New toy!\nThe ultimate lazy life is happening before my eyes. Now I love technology , always have . But let‚Äôs be honest , telling Alexa to turn the lights off and on and ask her to tell you a joke as examples . It really is great and I‚Äôm now addicted to the Hue line as well.\nEcho is nice but it could be better allowing you to connect to anything that is on your WIFI network without having to buy several different hubs.\nI have two dots and this and the functionality between them is awesome. I can‚Äôt wait to see how it improves through time. Great quality speaker and build.\nWe have several, this one was a Christmas gift for our daughter. We love the convenience of creating lists and some home automation. Once you get started, you come up with more things to use it for.\nI bought it for my family and everyone loves it! Definitely recommend buying one!\nThis is such a great addition to our house! Amazon Echo plus is incredible for all the things it is capable of doing.\nDecided to go for the model just below this one. I didn't need the integrated hub features. (Phillips Hue does require this, but I decided to stick with my current Insteon hub).\nWaste of money, ask Alexa a question and you are lucky if you get an answer instead of I'm not sure.\nI love how Alexa can control almost all smart things and help control lights and power on and off devices to help us get ready for the day. The music is connected directly to Amazon Prime Music and I love how the sound is clear and crisp. You can call out to Alexa from far away and she‚Äôll add items to your shopping list and the Alexa app is so simple to view the lists and control your smart things.\nI have an Echo that I bought from Best Buy several months ago. So when it came to buying one for my son & his family for Christmas I knew where to come. It‚Äôs an excellent information hub!\nGood stereo sound, but will not control some devices without the use of an external hub.\nEasy to use no Complains at all. Added all the smart plugs to the skills and works perfect.\nI love having Alexa in my home. Alexa has helped from recipes to relaxing sleep sounds all night\nPurchased my first Amazon Echo Plus after researching online and watching video reviews. A friend of mine had one and he showed me the features. The device was easy to setup and has worked great since. I use it to control lights, fans and play music.\nGreat entertainment when friends are over. The knowledge and jokes are tons of fun.\nThis Alexa series 2 sounds better and preforms better than the previous model. It picks up the voices 10x better and the sound quality is on a Bose level(fills the whole room). Me and my family spends more quality time on the product!",
+            "I needed a second charger (for traveling) for my Kindle Fire that was a fast charger. This worked great. It charges my Kindle fire in just a few hours.\nThis solved the problem of my daughter's lost kindle charger.\nI found that I was immediately sked by a staff member if I needed help. I received good advice and shown similar alternative products. What I bought was perfect for what I wanted. The price was quite reasonable.\nBest kindle charger ever. Took 30 minutes to being my kindle back to life.\nI was looking everywhere for this because I lost my charger for my fire stick and i finally found it at best buy. It was a great price and works perfectly!\nGreat product for quickly charging your Kindle!!!!\nI bought this because the package said it was a fast charger only to find it charges at normal speed... That was disappointing. I'm pretty sure I'm not doing anything wrong. It seems pretty self explanatory... :/\nTried different charging blocks, nothing worked properly. Plugged in the Amazon block, Kindle came right up.\nQuickly charges kindle so son can use it. Worked great right out of the package\njust bought. seems to be working great so far. not sure how long it will last.\nGood one and working without any issues. Slim and portable\nThis works well, charges book readers quickly and easily\nLove it. Best charger I ever bought. Quickly charges my Kindle and my cell phone.\nHave been using this item and it seems to be working quite well.\nLove this base for charging my kindle. You still need to use a good cord for most effective charge. With a good cord and this base your kindle will charge in under 30 minutes.\nExactly what I needed. Didn't want to settle for a generic off brand charger. Thanks to Best Buy I didn't have to.\nBought this charger for the Kindle voyage and its great.\nPurchased, took home, attached to cable,plugged in. Easy to use. No problems using this charger.\npretty convenient to have another cable to charge the kindle,, great price and ready to have it on hand",
+            "big screen,2 year old granddaughter watches Sesame Street and scrolls through selections....\nThe store representative took his time with me to choose the right size and the lady at the check out got me hooked up with Best Buy Program membership.\nlike better than the 7 inch Kindle better to read.\nI love this kindle! I had one of the first Fire HD kindles that is still kicking and awesome, but when I saw this in the store I just had to have it. I think it's more user friendly and feels like it offers so many more options and functions than the Fire HD I have. Not to mention it dwarfs my last kindle in size. If I had to make one complaint, it's that there is not an auto brightness function (or at least I haven't found it) and you can't make your pages a cream color rather than stark white. Both those options were easier on my eyes, but I am testing out the Blue Shade mode to see if that helps as much as it's supposed to with night time/ bed time reading. All in all, I am extremely happy with this purchase.\nI had reviewed and looked at this Samsung 65 4k HDTV and at this timeit was the best for the money..Very satisfied with TV and would recommend it to anyone.\nI like the bigger screen size. It allows me to read my books without straining my eyes and allows more of the text to be displayed.\nTablet is easy to work with only can be slow to come up on certain sites\nI've had the first kindle fire, I love the tablet.Why because it's bigger\nThis tablet is so much easier to use than my 6 fire. It is great for reading or eatching movies.\nKindle products are easy to use and set up. It does most everything the expensive tablets do.\nThis tablet was SO easy to set up, even this old technologically-challenged grandma did it without help! I am able to load many books on it. It is convenient and easy to handle.\nGood products and service and happy with Amazon Fire Tablet\nI love this product it is so easy to use It has a clear picture\nslower than my last kindle. the power button is not easy accesible when in a case.\nI love my new Kindle!! I would recommend this to everyone!! It has so many features and love the size!!\nlove the big screen, clear pictures and fast loading. battery lasts long. I use it every day !\nGreat table does everything that i need it for. Great resolution and screen for reading books\nThe store representative took his time with me to choose the right size and the lady at the check out got me hooked up with Best Buy Program membership.\nIt is great for a bigger picture but runs really slow.\nupgraded from a previous model and cannot be happier\nI go this tablet after problems with 2 Samsung tablets. so far like it. all apps I use available. A little slower than previous tablets that is the only reason for the 4 stars\nI love my new Kindle. It is bigger than the last Kindle I had. This Kindle is much easier to handle and to read.\nI have been a kindle owner since they first came out. This version has many,many more bells and whistles but I still use mine mostly for books, audible books and a place for me to download music I can listen to when I travel. Sometimes it is a bit slow opening up different apps and functions but overall it is functional, dependable and useful to me\nI use my Kindle fire HD 10 in 3 ways 1 for reading Kindle books, 2 for streaming TV shows or movies while riding my exercise bike, 3 to surf the internet.\nBought this tablet for my 84 year old grandpa and he loves it. Easy to use\nThe Amazon fire HD10 is one of the best deals on the market. I've had a IPad and would rather have the HD10! It's what-1/3 of the price of a IPad and just as good, if not better\nThis was an Xmas gift for my wife. She had wanted a pad of some sort but I just couldn't afford an Ipad so I looked at the Fire as an alternative. First the screen size was just what I wanted. Second the price was very reasonable. Third it had functions and capabilities that were suitable for my wife's skills and needs. She absolutely loves it and I actually got a compliment on my present giving. That don't happen very often let me tell you. I will recommend this she's pleased I'm pleased what else do you need?  My son was able to piggyback off of this gift, and purchased her the cover to go with it. So it really worked for my family. And I made my wife happy .\nI bought this Tablet for my Wife. She uses it every day. It is very usefulto her. She uses it in place of a computer. She watches movies on it.The Graphics are excellent.\nSales guy didn't have much knowledge about the Kindle. He wasn't very helpful in getting me started.\nThis kindle has made life easier by adding the micro sd card slot to enhance the memory capacity up to 128gb more than it has built in, makes it easy to switch cards so you can have your whole library on hand without slowing down the overall processing capability\nThis was an upgrade from my Amazon 7 inch. Bigger screen was the key for me. It's great for listening to music, reading books, watching movies, tv sports, tv shows and playing all the games. Hours of relaxation and entertainment along with Amazon ' s new Alexa.\nI love it!! It can do it all!! Beautiful color graphics and in no time at all, I can watch a movie or play games or read my favorite novel. I love it!!\nNice tablet and very fast/capable. The storage options are way better than the previous models. I would highly recommend this tablet to anyone in the market for one.",
+          ];
+          srcLocation = locations[sel.selectedIndex];
+          if (srcLocation != undefined && srcLocation != "") {
+            document.getElementById("text").innerHTML = srcLocation;
+          }
+        }
+      </script>
+      <select id="product" onchange="updateTextBox(this);">
+        <option selected="selected" value="" id="Templates">
+          Please select a product
+        </option>
+        <option value="Amazon Kindle E-Reader 6 2016">
+          Amazon Kindle E-Reader 6" Wifi (8th Generation, 2016)
+        </option>
+        <option value="Amazon Echo Show Alexa-enabled Bluetooth Speaker with 7">
+          Amazon Echo Show Alexa-enabled Bluetooth Speaker with 7" Screen
+        </option>
+        <option value="Amazon - Echo Plus w/ Built-In Hub - Silver">
+          Amazon - Echo Plus w/ Built-In Hub - Silver
+        </option>
+        <option
+          value="Amazon 9W PowerFast Official OEM USB Charger and Power Adapter for Fire Tablets and Kindle eReaders"
+        >
+          Amazon 9W PowerFast Official OEM USB Charger and Power Adapter for
+          Fire Tablets and Kindle eReaders
+        </option>
+        <option
+          value="Fire HD 10 Tablet, 10.1 HD Display, Wi-Fi, 16 GB - Includes Special Offers, Silver Aluminum"
+        >
+          Fire HD 10 Tablet, 10.1 HD Display, Wi-Fi, 16 GB - Includes Special
+          Offers, Silver Aluminum
+        </option>
+      </select>
+      <br />
+      <br />
+      <textarea id="text" cols="80" rows="10">
+You can select a product and see its reviews with already loaded data. 
+</textarea
+      >
+      <script>
+        let input = document.querySelector("input");
+
+        let textarea = document.querySelector("textarea");
+
+        // This event listener has been implemented to identify a
+        // Change in the input section of the html code
+        // It will be triggered when a file is chosen.
+        input.addEventListener("change", () => {
+          let files = input.files;
+
+          if (files.length == 0) return;
+
+          /* If any further modifications have to be made on the
+		 Extracted text. The text can be accessed using the 
+		 file variable. But since this is const, it is a read 
+		 only variable, hence immutable. To make any changes, 
+		 changing const to var, here and In the reader.onload 
+		 function would be advisible */
+          const file = files[0];
+
+          let reader = new FileReader();
+
+          reader.onload = (e) => {
+            const file = e.target.result;
+
+            // This is a regular expression to identify carriage
+            // Returns and line breaks
+            const lines = file.split(/\r\n|\n/);
+            textarea.value = lines.join("\n");
+          };
+
+          reader.onerror = (e) => alert(e.target.error.name);
+
+          reader.readAsText(file);
+        });
+      </script>
+      <br />
+      <div id="menu">
+        <label for="topics">Topics:</label>
+        <select name="topics" id="topics" style="margin-right: 5px">
+          <option selected="selected">2</option>
+          <option>3</option>
+          <option>4</option>
+          <option>5</option>
+          <option>6</option>
+          <option>7</option>
+          <option>8</option>
+          <option>9</option>
+          <option>10</option>
+        </select>
+        <!-- <div id="mySidenav" class="sidenav">
+          <input
+            id="btnMetadataClicked"
+            type="button"
+            onclick="btnMetadataClicked();"
+            value="Metadata"
+          />
+          <input
+            id="btnTopicise"
+            type="button"
+            onclick="btnTopiciseClicked();"
+            value="Word Cloud"
+          />
+          <input
+            id="btnTimeSeries"
+            type="button"
+            onclick="btnTimeSeriesClicked();"
+            value="Time Series"
+          />
+          <input
+            id="btnHeatMap"
+            type="button"
+            onclick="btnHeatMapClicked();"
+            value="Heat Map"
+          />
+        </div> -->
+        <br />
+      </div>
+      <div class="spacer"></div>
+      <div id="topiccloud"></div>
+      <div id="output" style="margin-left: 50px"></div>
+      <div id="Myid" style="display: none">
+        <div style="display: flex; justify-content: center">
+          <div>
+            <p>
+              <strong>Alpha</strong> : 0.1 The alpha controls the mixture of
+              topics for any given document.
+            </p>
+            <p>
+              <strong>Beta</strong>: 0.1 The beta hyperparameter controls the
+              distribution of words per topic.
+            </p>
+            <p>
+              <strong>Iterations</strong>: 1000 Number of times the LDA function
+              runs to produce the output.
+            </p>
+            <p>
+              <strong>Stopwords</strong>:The list of stopwords can be downloaded
+              <a
+                href="https://drive.google.com/file/d/1bmMM5p40UQu9MSuYGbzp-fg0AxmZqV48/view?usp=sharing"
+                target="_Blank"
+                >here</a
+              >.
+            </p>
+          </div>
+        </div>
+      </div>
+      <script>
+        function btnMetadataClicked() {
+          var x = document.getElementById("Myid");
+          var y = document.getElementById("topiccloud");
+          var z = document.getElementById("output");
+          var t = document.getElementById("text");
+          y.style.display = "none";
+          z.style.display = "none";
+          if (x.style.display === "none") {
+            x.style.display = "block";
+            t.style.height = "30%";
+          } else {
+            x.style.display = "none";
+            t.style.height = "50%";
+          }
+        }
+      </script>
+    </div>
+  </body>
+</html>
