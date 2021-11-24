@@ -1,0 +1,244 @@
+body {
+  font-family: "Trebuchet MS", Helvetica, Arial, sans-serif;
+  font-size: 10pt;
+  /* background-color: #111; */
+}
+/* Style the links inside the sidenav */
+/* #mySidenav input {
+  position: absolute; Position them relative to the browser window
+  transition: 0.3s; Add transition on hover
+  padding: 15px; 15px padding
+  width: 100px; Set a specific width
+  text-decoration: none; Remove underline
+  font-size: 10px; Increase font size
+  color: white; White text color
+  border-radius: 0 5px 5px 0; Rounded corners on the top right and bottom right side
+} */
+#navabar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  height: 100%;
+  max-width: 1300px;
+  padding: 0 10px;
+}
+/* The about link: 20px from the top with a green background */
+#btnMetadata {
+  margin-top: 100px;
+  margin-left: 50px;
+  width: 108px;
+  background-color: #04aa6d;
+}
+
+#btnTopicise {
+  /* top: 100px; */
+  margin-top: 25px;
+  margin-left: 50px;
+  background-color: #2196f3;
+}
+
+#btnTimeSeries {
+  /* top: 140px; */
+  margin-top: 25px;
+  margin-left: 50px;
+  background-color: #f44336;
+}
+
+#btnHeatMap {
+  /* top: 200px; */
+  margin-top: 25px;
+  margin-left: 50px;
+  width: 108px;
+  background-color: orange;
+}
+
+#btnReset {
+  /* top: 200px; */
+  margin-top: 105px;
+  margin-left: 50px;
+  width: 108px;
+  background-color: peachpuff;
+}
+
+#btnBack {
+  /* top: 200px; */
+  margin-top: 105px;
+  margin-left: 50px;
+  width: 108px;
+  background-color: darkcyan;
+}
+
+#slider {
+  width: 100px;
+  margin-left: 10px;
+  display: inline-block;
+  vertical-align: middle;
+}
+.box {
+  height: 8px;
+  vertical-align: middle;
+  margin-top: 8px;
+  display: table-cell;
+}
+
+#topiccloud {
+  margin-left: 150px;
+  margin-right: 10px;
+}
+
+#topiccloud canvas {
+  border: 2px solid #d6ad60;
+}
+
+.topicbox {
+  padding: 2px;
+  border: 2px solid lightgray;
+  border-radius: 10px;
+  margin: 5px;
+}
+
+.topicbar {
+  border: 1px solid black;
+}
+
+.color0 {
+  color: #ff0000;
+}
+.bgcolor0 {
+  background-color: #ff0000;
+}
+.color1 {
+  color: #0000ff;
+}
+.bgcolor1 {
+  background-color: #0000ff;
+}
+.color2 {
+  color: #00ff00;
+}
+.bgcolor2 {
+  background-color: #00ff00;
+}
+.color3 {
+  color: #808000;
+}
+.bgcolor3 {
+  background-color: #808000;
+}
+.color4 {
+  color: #00ff00;
+}
+.bgcolor4 {
+  background-color: #00ff00;
+}
+.color5 {
+  color: #008000;
+}
+.bgcolor5 {
+  background-color: #008000;
+}
+.color6 {
+  color: #00ffff;
+}
+.bgcolor6 {
+  background-color: #00ffff;
+}
+.color7 {
+  color: orange;
+}
+.bgcolor7 {
+  background-color: orange;
+}
+.color8 {
+  color: #800000;
+}
+.bgcolor8 {
+  background-color: #800000;
+}
+.color9 {
+  color: #000080;
+}
+.bgcolor9 {
+  background-color: #000080;
+}
+.color10 {
+  color: #ff00ff;
+}
+.bgcolor10 {
+  background-color: #ff00ff;
+}
+.color11 {
+  color: #800080;
+}
+.bgcolor11 {
+  background-color: #800080;
+}
+.color12 {
+  color: #c0c0c0;
+}
+.bgcolor12 {
+  background-color: #c0c0c0;
+}
+
+.lines {
+  margin: 0px;
+  padding: 2px;
+  display: table;
+}
+
+#text {
+  font-family: "Trebuchet MS", Helvetica, Arial, sans-serif;
+  font-size: 10pt;
+  width: 80%;
+  margin-left: 10%;
+  border: 2px solid #d6ad60;
+}
+
+#product {
+  font-family: "Trebuchet MS", Helvetica, Arial, sans-serif;
+  font-size: 10pt;
+  width: 80%;
+  margin-left: 10%;
+  border: 2px solid #d6ad60;
+}
+/* 
+#topics {
+  font-family: "Trebuchet MS", Helvetica, Arial, sans-serif;
+  font-size: 10pt;
+  width: 80%;
+  margin-left: 10%;
+} */
+
+#menu {
+  padding: 15px;
+  text-align: center;
+}
+
+#titletxt {
+  font-size: 44px;
+  text-align: center;
+  font-weight: bold;
+  color: darkblue;
+}
+#titledesc {
+  font-size: 16px;
+  padding: 20px;
+}
+
+@media screen and (min-width: 768px) {
+  #text {
+    font-family: "Trebuchet MS", Helvetica, Arial, sans-serif;
+    font-size: 10pt;
+    width: 80%;
+    height: 50%;
+    margin-left: 10%;
+  }
+
+  #product {
+    font-family: "Trebuchet MS", Helvetica, Arial, sans-serif;
+    font-size: 10pt;
+    width: 80%;
+    margin-left: 10%;
+  }
+}
